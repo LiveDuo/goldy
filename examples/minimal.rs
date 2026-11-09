@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use goldy::{
     shader::builtins, BufferKind, Color, Instance, NodeAccess, RenderPipeline, RenderPipelineDesc,
     RequestAdapterOptions, RuntimeDescriptor, Scheme, ShaderModule, SurfaceConfig, SurfaceExchange, TargetLoad,
@@ -24,9 +22,9 @@ fn main() {
                 // surface
                 let instance = Instance::new().unwrap();
                 let adapter = instance.request_adapter(&RequestAdapterOptions::default()).unwrap();
-                let runtime = Arc::new(adapter.request_runtime(&RuntimeDescriptor::default()).unwrap());
+                let runtime = adapter.request_runtime(&RuntimeDescriptor::default()).unwrap();
                 let ctx = runtime.create_context().unwrap();
-                let win = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
+                let win = event_loop.create_window(Window::default_attributes()).unwrap();
                 let surface = SurfaceExchange::new(&ctx, &win, SurfaceConfig::default()).unwrap();
 
                 // vertices

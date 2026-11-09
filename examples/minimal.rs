@@ -59,16 +59,7 @@ fn create_gfx(window: &Arc<Window>) -> anyhow::Result<Gfx> {
     let rt = ctx.lease_render_target(w.max(1), h.max(1), surface.format(), None)?;
 
     let mut scheme = Scheme::new(&ctx);
-    let mut pass = scheme.render_pass(
-        "triangle",
-        &rt,
-        TargetLoad::Clear(Color {
-            r: 0.1,
-            g: 0.1,
-            b: 0.2,
-            a: 1.0,
-        }),
-    );
+    let mut pass = scheme.render_pass("triangle", &rt, TargetLoad::Clear(Color::BLACK));
     pass.with_parcel(&vertices, NodeAccess::Read);
     pass.set_pipeline(&pipeline);
     pass.set_vertex_buffer(0, &vertices);
@@ -141,11 +132,7 @@ fn main() -> anyhow::Result<()> {
 
                         if let Ok(rt) = g.ctx.lease_render_target(w.max(1), h.max(1), g.surface.format(), None) {
                             let mut scheme = Scheme::new(&g.ctx);
-                            let mut pass = scheme.render_pass(
-                                "triangle",
-                                &rt,
-                                TargetLoad::Clear(Color::BLACK),
-                            );
+                            let mut pass = scheme.render_pass("triangle", &rt, TargetLoad::Clear(Color::BLACK));
                             pass.with_parcel(&g.vertices, NodeAccess::Read);
                             pass.set_pipeline(&g.pipeline);
                             pass.set_vertex_buffer(0, &g.vertices);

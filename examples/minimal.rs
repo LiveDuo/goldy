@@ -93,10 +93,6 @@ fn main() {
             }
 
             Event::WindowEvent { event, window_id: id } => {
-                if Some(id) != window_id {
-                    return;
-                }
-
                 if let WindowEvent::CloseRequested = event {
                     event_loop.exit();
                 }

@@ -34,11 +34,13 @@ unsafe fn host_view_copy(view: *mut GoldyHostView) -> Vec<u8> {
 }
 
 /// Host-claim `parcel` from `submission` and copy bytes to a `Vec`.
+#[allow(dead_code)]
 pub unsafe fn take_parcel_copy(submission: *mut GoldySchemeSubmission, parcel: *const GoldyParcel) -> Vec<u8> {
     host_view_copy(goldy_scheme_submission_take(submission, parcel))
 }
 
 /// Host-claim `texture` from `submission` and copy bytes to a `Vec`.
+#[allow(dead_code)]
 pub unsafe fn take_texture_copy(submission: *mut GoldySchemeSubmission, texture: *const GoldyTexture) -> Vec<u8> {
     host_view_copy(goldy_scheme_submission_take_texture(submission, texture))
 }

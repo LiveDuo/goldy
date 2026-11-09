@@ -14,9 +14,8 @@ use winit::{
 };
 
 fn main() {
-    let mut event_loop = EventLoop::new().unwrap();
-
     let mut window = None;
+    let mut event_loop = EventLoop::new().unwrap();
 
     #[allow(deprecated)]
     event_loop

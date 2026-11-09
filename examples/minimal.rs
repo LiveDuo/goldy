@@ -35,25 +35,19 @@ fn create_gfx(window: &Arc<Window>) -> anyhow::Result<Gfx> {
     let ctx = runtime.create_context()?;
     let surface = SurfaceExchange::new(&ctx, window, SurfaceConfig::default())?;
 
-    let vertices = runtime.acquire_buffer_with_data(
-        &[
-            Vertex2D::new(0.0, -0.5, Color::RED),
-            Vertex2D::new(-0.5, 0.5, Color::GREEN),
-            Vertex2D::new(0.5, 0.5, Color::BLUE),
-        ],
-        BufferKind::Scattered,
-    )?;
+    let data = &[
+        Vertex2D::new(0.0, -0.5, Color::RED),
+        Vertex2D::new(-0.5, 0.5, Color::GREEN),
+        Vertex2D::new(0.5, 0.5, Color::BLUE),
+    ];
+    let vertices = runtime.acquire_buffer_with_data(data, BufferKind::Scattered)?;
 
     let shader = ShaderModule::from_slang(&runtime, builtins::VERTEX_COLOR_2D)?;
-    let pipeline = common::render_pipeline(
-        &runtime,
-        &shader,
-        surface.format(),
-        RenderPipelineDesc {
-            vertex_layout: Vertex2D::layout(),
-            ..Default::default()
-        },
-    )?;
+    let pipeline_desc = RenderPipelineDesc {
+        vertex_layout: Vertex2D::layout(),
+        ..Default::default()
+    };
+    let pipeline = common::render_pipeline(&runtime, &shader, surface.format(), pipeline_desc)?;
 
     let (w, h) = surface.size();
     let rt = ctx.lease_render_target(w.max(1), h.max(1), surface.format(), None)?;
@@ -93,7 +87,6 @@ fn main() -> anyhow::Result<()> {
         match event {
             // Create the window and initialise graphics the first time the app is resumed.
             Event::Resumed => {
-
                 let win = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
 
                 match create_gfx(&win) {

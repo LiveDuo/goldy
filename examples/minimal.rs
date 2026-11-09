@@ -3,9 +3,9 @@ mod common;
 use std::sync::Arc;
 
 use goldy::{
-    shader::builtins, Buffer, BufferKind, Color, Instance, Lease, LeaseRenderTarget, NodeAccess, RenderPipeline,
-    RenderPipelineDesc, RequestAdapterOptions, RuntimeDescriptor, Scheme, ShaderModule, SurfaceConfig, SurfaceExchange,
-    TargetLoad, Vertex2D,
+    shader::builtins, Buffer, BufferKind, Color, Instance, Lease, LeaseRenderTarget, NodeAccess,
+    RenderPipeline, RenderPipelineDesc, RequestAdapterOptions, RuntimeDescriptor, Scheme, ShaderModule,
+    SurfaceConfig, SurfaceExchange, TargetLoad, Vertex2D,
 };
 
 use winit::{
@@ -15,28 +15,17 @@ use winit::{
     window::Window,
 };
 
-struct Gfx {
-    _ctx: goldy::Context,
-    _window: Arc<Window>,
-    _surface: SurfaceExchange,
-    _pipeline: RenderPipeline,
-    _vertices: Buffer,
-    _shader: ShaderModule,
-    _rt: Lease<LeaseRenderTarget>,
-}
-
 fn main() {
     let mut event_loop = EventLoop::new().unwrap();
 
-    let mut window_id = None;
-    let mut gfx = None;
+    // Declare per-resource storage so they live across events.
+    let mut _window = None;
 
     #[allow(deprecated)]
     event_loop
         .run_on_demand(|event, event_loop| match event {
             Event::Resumed => {
                 let win = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
-                let id = win.id();
 
                 let runtime = Arc::new(
                     Instance::new()
@@ -61,7 +50,8 @@ fn main() {
                     vertex_layout: Vertex2D::layout(),
                     ..Default::default()
                 };
-                let pipeline = common::render_pipeline(&runtime, &shader, surface.format(), pipeline_desc).unwrap();
+                let pipeline =
+                    common::render_pipeline(&runtime, &shader, surface.format(), pipeline_desc).unwrap();
 
                 let (w, h) = surface.size();
                 let rt = ctx
@@ -80,19 +70,11 @@ fn main() {
                 let mut submission = scheme.submit().unwrap();
                 let _ = (&mut submission >> &present).take();
 
-                window_id = Some(id);
-                gfx = Some(Gfx {
-                    _ctx: ctx,
-                    _window: win,
-                    _surface: surface,
-                    _pipeline: pipeline,
-                    _vertices: vertices,
-                    _shader: shader,
-                    _rt: rt,
-                });
+                // Park everything so it survives past this callback.
+                _window = Some(win);
             }
 
-            Event::WindowEvent { event, window_id: id } => {
+            Event::WindowEvent { event, .. } => {
                 if let WindowEvent::CloseRequested = event {
                     event_loop.exit();
                 }

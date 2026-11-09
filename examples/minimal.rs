@@ -26,60 +26,6 @@ struct Gfx {
     _rt: Lease<LeaseRenderTarget>,
 }
 
-fn create_gfx(window: &Arc<Window>) -> anyhow::Result<Gfx> {
-    let runtime = Arc::new(
-        Instance::new()?
-            .request_adapter(&RequestAdapterOptions::default())?
-            .request_runtime(&RuntimeDescriptor::default())?,
-    );
-    let ctx = runtime.create_context()?;
-    let surface = SurfaceExchange::new(&ctx, window, SurfaceConfig::default())?;
-
-    let vertices = runtime.acquire_buffer_with_data(
-        &[
-            Vertex2D::new(0.0, -0.5, Color::RED),
-            Vertex2D::new(-0.5, 0.5, Color::GREEN),
-            Vertex2D::new(0.5, 0.5, Color::BLUE),
-        ],
-        BufferKind::Scattered,
-    )?;
-
-    let shader = ShaderModule::from_slang(&runtime, builtins::VERTEX_COLOR_2D)?;
-    let pipeline = common::render_pipeline(
-        &runtime,
-        &shader,
-        surface.format(),
-        RenderPipelineDesc {
-            vertex_layout: Vertex2D::layout(),
-            ..Default::default()
-        },
-    )?;
-
-    let (w, h) = surface.size();
-    let rt = ctx.lease_render_target(w.max(1), h.max(1), surface.format(), None)?;
-
-    let mut scheme = Scheme::new(&ctx);
-    let mut pass = scheme.render_pass("triangle", &rt, TargetLoad::Clear(Color::BLACK));
-    pass.with_parcel(&vertices, NodeAccess::Read);
-    pass.set_pipeline(&pipeline);
-    pass.set_vertex_buffer(0, &vertices);
-    pass.draw(0..3, 0..1);
-    pass.finish();
-
-    let present = surface.bind_render_target(&mut scheme, &rt)?;
-
-    Ok(Gfx {
-        ctx,
-        surface,
-        pipeline,
-        vertices,
-        _shader: shader,
-        scheme,
-        present,
-        _rt: rt,
-    })
-}
-
 fn main() -> anyhow::Result<()> {
     let mut event_loop = EventLoop::new()?;
 
@@ -99,11 +45,67 @@ fn main() -> anyhow::Result<()> {
 
                 let win = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
 
-                match create_gfx(&win) {
-                    Ok(g) => {
+                // Previously the body of `create_gfx`, inlined via an immediately-invoked closure
+                // so we can keep using `?`.
+                let result: anyhow::Result<()> = (|| {
+                    let runtime = Arc::new(
+                        Instance::new()?
+                            .request_adapter(&RequestAdapterOptions::default())?
+                            .request_runtime(&RuntimeDescriptor::default())?,
+                    );
+                    let ctx = runtime.create_context()?;
+                    let surface = SurfaceExchange::new(&ctx, &win, SurfaceConfig::default())?;
+
+                    let vertices = runtime.acquire_buffer_with_data(
+                        &[
+                            Vertex2D::new(0.0, -0.5, Color::RED),
+                            Vertex2D::new(-0.5, 0.5, Color::GREEN),
+                            Vertex2D::new(0.5, 0.5, Color::BLUE),
+                        ],
+                        BufferKind::Scattered,
+                    )?;
+
+                    let shader = ShaderModule::from_slang(&runtime, builtins::VERTEX_COLOR_2D)?;
+                    let pipeline = common::render_pipeline(
+                        &runtime,
+                        &shader,
+                        surface.format(),
+                        RenderPipelineDesc {
+                            vertex_layout: Vertex2D::layout(),
+                            ..Default::default()
+                        },
+                    )?;
+
+                    let (w, h) = surface.size();
+                    let rt = ctx.lease_render_target(w.max(1), h.max(1), surface.format(), None)?;
+
+                    let mut scheme = Scheme::new(&ctx);
+                    let mut pass = scheme.render_pass("triangle", &rt, TargetLoad::Clear(Color::BLACK));
+                    pass.with_parcel(&vertices, NodeAccess::Read);
+                    pass.set_pipeline(&pipeline);
+                    pass.set_vertex_buffer(0, &vertices);
+                    pass.draw(0..3, 0..1);
+                    pass.finish();
+
+                    let present = surface.bind_render_target(&mut scheme, &rt)?;
+
+                    gfx = Some(Gfx {
+                        ctx,
+                        surface,
+                        pipeline,
+                        vertices,
+                        _shader: shader,
+                        scheme,
+                        present,
+                        _rt: rt,
+                    });
+                    Ok(())
+                })();
+
+                match result {
+                    Ok(()) => {
                         window_id = Some(win.id());
                         window = Some(win);
-                        gfx = Some(g);
                         window.as_ref().unwrap().request_redraw();
                     }
                     Err(e) => {

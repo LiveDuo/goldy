@@ -37,13 +37,10 @@ fn main() {
 
                 // pipeline
                 let shader = ShaderModule::from_slang(&runtime, builtins::VERTEX_COLOR_2D).unwrap();
-                let pipeline_desc = RenderPipelineDesc {
-                    vertex_layout: Vertex2D::layout(),
-                    ..Default::default()
-                };
                 let render_pipeline_desc = RenderPipelineDesc {
                     target_format: surface.format(),
-                    ..pipeline_desc
+                    vertex_layout: Vertex2D::layout(),
+                    ..Default::default()
                 };
                 let pipeline = RenderPipeline::new(&runtime, &shader, &shader, &render_pipeline_desc).unwrap();
 

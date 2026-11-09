@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "python", "ffi", "ffi-client", "derive", "shader_ir"]
+members = [".", "ffi", "ffi-client", "derive", "shader_ir"]
 resolver = "2"
 
 [package]
@@ -18,15 +18,11 @@ autoexamples = false
 exclude = [
     ".cursor/",
     ".github/",
-    "cpp/",
     "derive/",
     "shader_ir/",
-    "docker/",
     "docs/",
-    "dotnet/",
     "ffi/",
     "ffi-client/",
-    "python/",
     "scripts/",
     "AGENTS.md",
     "DEBUGGING.md",
@@ -309,4 +305,3 @@ harness = false
 [[test]]
 name = "cross_submit_gpu"
 harness = false
-

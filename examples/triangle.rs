@@ -5,11 +5,10 @@
 //! Run with: cargo run --example triangle --features examples
 
 use goldy::{
-    shader::builtins, Buffer, BufferKind, Color, Instance, Lease, LeaseRenderTarget, MemoryExchange, NodeAccess,
-    RenderPipeline, RenderPipelineDesc, RequestAdapterOptions, RuntimeDescriptor, Scheme, ShaderModule, SurfaceConfig,
-    SurfaceExchange, TargetLoad, Texture, TextureFormat, Transaction, Vertex2D,
+    shader::builtins, Buffer, BufferKind, Color, Instance, Lease, LeaseRenderTarget, NodeAccess, RenderPipeline,
+    RenderPipelineDesc, RequestAdapterOptions, RuntimeDescriptor, Scheme, ShaderModule, SurfaceConfig, SurfaceExchange,
+    TargetLoad, Texture, TextureFormat, Transaction, Vertex2D,
 };
-use std::ops::Shr;
 use std::sync::Arc;
 use std::time::Instant;
 use winit::{

@@ -64,7 +64,9 @@ fn main() {
                 let pipeline = common::render_pipeline(&runtime, &shader, surface.format(), pipeline_desc).unwrap();
 
                 let (w, h) = surface.size();
-                let rt = ctx.lease_render_target(w.max(1), h.max(1), surface.format(), None).unwrap();
+                let rt = ctx
+                    .lease_render_target(w.max(1), h.max(1), surface.format(), None)
+                    .unwrap();
 
                 let mut scheme = Scheme::new(&ctx);
                 let mut pass = scheme.render_pass("triangle", &rt, TargetLoad::Clear(Color::BLACK));
@@ -103,6 +105,4 @@ fn main() {
             _ => {}
         })
         .unwrap();
-
-    drop(gfx);
 }

@@ -53,13 +53,6 @@ fn create_gfx(window: &Arc<Window>) -> anyhow::Result<Gfx> {
     let rt = ctx.lease_render_target(w.max(1), h.max(1), surface.format(), None)?;
 
     let mut scheme = Scheme::new(&ctx);
-    let mut pass = scheme.render_pass("triangle", &rt, TargetLoad::Clear(Color::BLACK));
-    pass.with_parcel(&vertices, NodeAccess::Read);
-    pass.set_pipeline(&pipeline);
-    pass.set_vertex_buffer(0, &vertices);
-    pass.draw(0..3, 0..1);
-    pass.finish();
-
     let present = surface.bind_render_target(&mut scheme, &rt)?;
 
     Ok(Gfx {

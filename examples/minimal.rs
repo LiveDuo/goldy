@@ -12,7 +12,7 @@ use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     platform::run_on_demand::EventLoopExtRunOnDemand,
-    window::{Window, WindowId},
+    window::Window,
 };
 
 struct Gfx {
@@ -26,7 +26,7 @@ struct Gfx {
     _rt: Lease<LeaseRenderTarget>,
 }
 
-fn create_gfx(event_loop: &winit::event_loop::ActiveEventLoop, window: &Arc<Window>) -> anyhow::Result<Gfx> {
+fn create_gfx(window: &Arc<Window>) -> anyhow::Result<Gfx> {
     let runtime = Arc::new(
         Instance::new()?
             .request_adapter(&RequestAdapterOptions::default())?
@@ -97,6 +97,7 @@ fn main() -> anyhow::Result<()> {
     let mut window_id = None;
     let mut gfx = None;
 
+    #[allow(deprecated)]
     event_loop.run_on_demand(|event, event_loop| {
         match event {
             // Create the window and initialise graphics the first time the app is resumed.
@@ -107,7 +108,7 @@ fn main() -> anyhow::Result<()> {
 
                 let win = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
 
-                match create_gfx(event_loop, &win) {
+                match create_gfx(&win) {
                     Ok(g) => {
                         window_id = Some(win.id());
                         window = Some(win);
@@ -143,12 +144,7 @@ fn main() -> anyhow::Result<()> {
                             let mut pass = scheme.render_pass(
                                 "triangle",
                                 &rt,
-                                TargetLoad::Clear(Color {
-                                    r: 0.1,
-                                    g: 0.1,
-                                    b: 0.2,
-                                    a: 1.0,
-                                }),
+                                TargetLoad::Clear(Color::BLACK),
                             );
                             pass.with_parcel(&g.vertices, NodeAccess::Read);
                             pass.set_pipeline(&g.pipeline);

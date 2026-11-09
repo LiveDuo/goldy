@@ -142,7 +142,8 @@ pub(super) fn declare_pass_resources(
     // Standalone (non-heap) textures aren't covered by use_heap: declare them
     // individually (heapless GPUs, or heap-overflow fallback allocations).
     for tex_state in textures.values() {
-        if tex_state.device_handle == device_handle && !tex_state.is_heap_allocated && !tex_state.slot_owned_externally {
+        if tex_state.device_handle == device_handle && !tex_state.is_heap_allocated && !tex_state.slot_owned_externally
+        {
             let usage = if tex_state.is_storage_image {
                 mtl::MTLResourceUsage::Read | mtl::MTLResourceUsage::Write
             } else {

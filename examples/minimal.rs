@@ -93,9 +93,6 @@ fn main() -> anyhow::Result<()> {
         match event {
             // Create the window and initialise graphics the first time the app is resumed.
             Event::Resumed => {
-                if window.is_some() {
-                    return;
-                }
 
                 let win = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
 

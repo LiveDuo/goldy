@@ -8,6 +8,8 @@
 //! Capture is file I/O plus a retained RGBA texture. Present still goes through
 //! [`SurfaceExchange`] / [`MemoryExchange`] in each example.
 
+#![allow(dead_code)]
+
 use goldy::{
     RenderPipeline, RenderPipelineDesc, Runtime, ShaderModule, SurfaceExchange, Texture, TextureFlags, TextureFormat,
     TextureKind,

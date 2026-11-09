@@ -3,8 +3,9 @@ mod common;
 use std::sync::Arc;
 
 use goldy::{
-    shader::builtins, BufferKind, Color, Instance, NodeAccess, RenderPipelineDesc, RequestAdapterOptions,
-    RuntimeDescriptor, Scheme, ShaderModule, SurfaceConfig, SurfaceExchange, TargetLoad, Vertex2D,
+    shader::builtins, BufferKind, Color, Instance, NodeAccess, RenderPipeline, RenderPipelineDesc,
+    RequestAdapterOptions, RuntimeDescriptor, Scheme, ShaderModule, SurfaceConfig, SurfaceExchange, TargetLoad,
+    Vertex2D,
 };
 
 use winit::{
@@ -45,7 +46,11 @@ fn main() {
                     vertex_layout: Vertex2D::layout(),
                     ..Default::default()
                 };
-                let pipeline = common::render_pipeline(&runtime, &shader, surface.format(), pipeline_desc).unwrap();
+                let render_pipeline_desc = RenderPipelineDesc {
+                    target_format: surface.format(),
+                    ..pipeline_desc
+                };
+                let pipeline = RenderPipeline::new(&runtime, &shader, &shader, &render_pipeline_desc).unwrap();
 
                 let (w, h) = surface.size();
                 let rt = ctx.lease_render_target(w, h, surface.format(), None).unwrap();

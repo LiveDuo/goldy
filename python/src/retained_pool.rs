@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyAny;
 use std::cell::RefCell;
 
-struct RecordSpec {
+pub(crate) struct RecordSpec {
     name: Option<String>,
     data: Option<Vec<u8>>,
     count: u64,

@@ -15,7 +15,7 @@ pub fn skip_dx12_warp_ray_tracing(device: &Runtime) -> bool {
         return false;
     }
     let name = device.adapter().name().to_ascii_lowercase();
-    let mut warp = name.contains("warp") || name.contains("microsoft basic render");
+    let warp = name.contains("warp") || name.contains("microsoft basic render");
     #[cfg(all(feature = "dx12", target_os = "windows"))]
     {
         warp |= device.adapter_id() == goldy::WARP_ADAPTER_ID;

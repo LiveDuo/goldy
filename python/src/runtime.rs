@@ -10,7 +10,6 @@ use crate::texture::PyTexture;
 use crate::types::{PyBufferKind, PyTextureFormat, PyTextureKind};
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
-use std::cell::RefCell;
 use std::sync::Arc;
 
 /// A GPU device - used to create resources and render.

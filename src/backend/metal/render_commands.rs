@@ -83,6 +83,7 @@ pub(super) fn declare_pass_resources(
     encoder: &mtl::RenderCommandEncoderRef,
     logical_device: &LogicalDevice,
     buffers: &HashMap<BufferHandle, super::types::BufferState>,
+    textures: &HashMap<super::super::TextureHandle, super::types::TextureState>,
     device_handle: DeviceHandle,
     is_mesh: bool,
 ) -> Result<()> {
@@ -136,6 +137,18 @@ pub(super) fn declare_pass_resources(
         {
             let ft = logical_device.frame_table.lock().unwrap();
             encoder.use_resource_at(ft.table_buffer(), mtl::MTLResourceUsage::Read, render_stages);
+        }
+    }
+    // Standalone (non-heap) textures aren't covered by use_heap: declare them
+    // individually (heapless GPUs, or heap-overflow fallback allocations).
+    for tex_state in textures.values() {
+        if tex_state.device_handle == device_handle && !tex_state.is_heap_allocated && !tex_state.slot_owned_externally {
+            let usage = if tex_state.is_storage_image {
+                mtl::MTLResourceUsage::Read | mtl::MTLResourceUsage::Write
+            } else {
+                mtl::MTLResourceUsage::Read
+            };
+            encoder.use_resource_at(&tex_state.texture, usage, render_stages);
         }
     }
     bind_goldy_argument_buffer(encoder, &logical_device.argument_buffer, is_mesh)?;

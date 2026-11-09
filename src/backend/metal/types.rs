@@ -81,7 +81,10 @@ pub(super) const MAX_HEAP_SIZE: u64 = 1024 * 1024 * 1024; // 1 GB
 /// pattern is strictly monotonic (all frees are deferred until after recording).
 pub(crate) struct HeapAllocator {
     device: MTLDevice,
-    primary: Heap,
+    /// `None` when MTLHeaps are unavailable (Intel / AMD Macs reject `Shared`
+    /// heaps, and `Private` heaps cannot back CPU-visible buffers). In that
+    /// mode every allocation is served by a standalone `device.new_buffer`.
+    primary: Option<Heap>,
     overflow: Vec<Heap>,
     high_water_mark: u64,
     primary_size: u64,
@@ -89,7 +92,7 @@ pub(crate) struct HeapAllocator {
 }
 
 impl HeapAllocator {
-    pub fn new(device: MTLDevice, primary: Heap, primary_size: u64) -> Self {
+    pub fn new(device: MTLDevice, primary: Option<Heap>, primary_size: u64) -> Self {
         Self {
             device,
             primary,
@@ -109,6 +112,9 @@ impl HeapAllocator {
     /// (see rationale there — we'd rather fail this one allocation than let
     /// a corrupt size request wedge the whole process).
     pub fn allocate(&mut self, size: u64, options: MTLResourceOptions) -> Option<MTLBuffer> {
+        if !self.is_enabled() {
+            return None;
+        }
         if size > MAX_HEAP_SIZE {
             tracing::error!(
                 "Refusing buffer allocation of {}MB (cap={}MB); this usually indicates \
@@ -118,7 +124,7 @@ impl HeapAllocator {
             );
             return None;
         }
-        if let Some(buf) = self.primary.new_buffer(size, options) {
+        if let Some(buf) = self.primary().new_buffer(size, options) {
             self.buffer_count += 1;
             self.update_high_water_mark();
             return Some(buf);
@@ -129,7 +135,7 @@ impl HeapAllocator {
             tracing::info!(
                 target: "goldy::diag::alloc",
                 size_mb = size / (1024 * 1024),
-                primary_used_mb = self.primary.used_size() / (1024 * 1024),
+                primary_used_mb = self.primary().used_size() / (1024 * 1024),
                 primary_total_mb = self.primary_size / (1024 * 1024),
                 overflow_count = self.overflow.len(),
                 "heap.primary_full"
@@ -172,7 +178,7 @@ impl HeapAllocator {
             overflow_size / 1024 / 1024,
             self.overflow.len() + 1,
             size / (1024 * 1024),
-            self.primary.used_size() / (1024 * 1024),
+            self.primary().used_size() / (1024 * 1024),
             self.primary_size / (1024 * 1024),
             self.high_water_mark / (1024 * 1024),
         );
@@ -215,7 +221,7 @@ impl HeapAllocator {
         if !self.has_buffers() {
             return;
         }
-        encoder.use_heap(&self.primary);
+        encoder.use_heap(self.primary());
         for heap in &self.overflow {
             encoder.use_heap(heap);
         }
@@ -226,7 +232,7 @@ impl HeapAllocator {
         if !self.has_buffers() {
             return;
         }
-        encoder.use_heap_at(&self.primary, stages);
+        encoder.use_heap_at(self.primary(), stages);
         for heap in &self.overflow {
             encoder.use_heap_at(heap, stages);
         }
@@ -254,7 +260,7 @@ impl HeapAllocator {
                     new_size / 1024 / 1024,
                     self.high_water_mark / 1024 / 1024,
                 );
-                self.primary = new_primary;
+                self.primary = Some(new_primary);
                 self.primary_size = new_size;
             }
 
@@ -305,6 +311,9 @@ impl HeapAllocator {
     /// Call *after* all old buffers have been freed and the GPU is idle, but
     /// *before* allocating the next large buffer.
     pub fn ensure_primary_capacity(&mut self, min_capacity: u64) {
+        if !self.is_enabled() {
+            return;
+        }
         let min_capacity = min_capacity.min(MAX_HEAP_SIZE);
         let recommended_max = self.device.recommended_max_working_set_size();
         let target = min_capacity
@@ -325,13 +334,22 @@ impl HeapAllocator {
                 target / 1024 / 1024,
                 min_capacity / 1024 / 1024,
             );
-            self.primary = new_primary;
+            self.primary = Some(new_primary);
             self.primary_size = target;
         }
     }
 
+    /// Whether heap-backed allocation is available on this device.
+    pub fn is_enabled(&self) -> bool {
+        self.primary.is_some()
+    }
+
+    fn primary(&self) -> &Heap {
+        self.primary.as_ref().expect("heap allocator disabled")
+    }
+
     fn update_high_water_mark(&mut self) {
-        let mut total = self.primary.used_size();
+        let mut total = self.primary.as_ref().map_or(0, |h| h.used_size());
         for heap in &self.overflow {
             total += heap.used_size();
         }
@@ -355,7 +373,8 @@ impl HeapAllocator {
 /// ephemeral overflow heaps created on demand when the primary fills up.
 pub(crate) struct TextureHeapAllocator {
     device: MTLDevice,
-    primary: Heap,
+    /// `None` when MTLHeaps are unavailable (see [`HeapAllocator`]).
+    primary: Option<Heap>,
     overflow: Vec<Heap>,
     /// Recorded for telemetry / future heap resize decisions.
     /// Not read in production paths; suppress dead_code since
@@ -366,7 +385,7 @@ pub(crate) struct TextureHeapAllocator {
 }
 
 impl TextureHeapAllocator {
-    pub fn new(device: MTLDevice, primary: Heap, primary_size: u64) -> Self {
+    pub fn new(device: MTLDevice, primary: Option<Heap>, primary_size: u64) -> Self {
         Self {
             device,
             primary,
@@ -381,7 +400,10 @@ impl TextureHeapAllocator {
     /// Tries primary, then all overflow heaps (newest first), then creates a
     /// new overflow. Overflow heap creation is capped to prevent runaway growth.
     pub fn allocate(&mut self, descriptor: &mtl::TextureDescriptorRef) -> Option<MTLTexture> {
-        if let Some(tex) = self.primary.new_texture(descriptor) {
+        if !self.is_enabled() {
+            return None;
+        }
+        if let Some(tex) = self.primary().new_texture(descriptor) {
             self.texture_count += 1;
             return Some(tex);
         }
@@ -430,6 +452,15 @@ impl TextureHeapAllocator {
         }
     }
 
+    /// Whether heap-backed allocation is available on this device.
+    pub fn is_enabled(&self) -> bool {
+        self.primary.is_some()
+    }
+
+    fn primary(&self) -> &Heap {
+        self.primary.as_ref().expect("texture heap allocator disabled")
+    }
+
     pub fn has_textures(&self) -> bool {
         self.texture_count > 0
     }
@@ -449,7 +480,7 @@ impl TextureHeapAllocator {
         if !self.has_textures() {
             return;
         }
-        encoder.use_heap(&self.primary);
+        encoder.use_heap(self.primary());
         for heap in &self.overflow {
             encoder.use_heap(heap);
         }
@@ -460,7 +491,7 @@ impl TextureHeapAllocator {
         if !self.has_textures() {
             return;
         }
-        encoder.use_heap_at(&self.primary, stages);
+        encoder.use_heap_at(self.primary(), stages);
         for heap in &self.overflow {
             encoder.use_heap_at(heap, stages);
         }

@@ -167,8 +167,29 @@ pub(super) fn create(state: &mut MetalState, adapter_id: u32) -> Result<DeviceHa
     Ok(handle)
 }
 
+/// `true` when the GPU can create `MTLStorageMode::Shared` heaps (Apple silicon).
+pub(super) fn heaps_supported(device: &MTLDevice) -> bool {
+    device.supports_family(mtl::MTLGPUFamily::Apple7)
+}
+
 /// Create the buffer and texture heap allocators for a logical device.
 fn create_heaps(device: &MTLDevice, heap_size: u64) -> (HeapAllocator, TextureHeapAllocator) {
+    // Shared-storage MTLHeaps are only allowed on Apple-silicon GPUs. Intel and
+    // AMD Macs abort in `-[MTLHeapDescriptorInternal validateWithDevice:]`
+    // ("Shared storage mode disallowed"), and Private heaps can't back the
+    // CPU-visible buffers/textures goldy allocates. On those GPUs we skip heaps
+    // and allocate standalone resources, declaring residency per resource.
+    if !heaps_supported(device) {
+        tracing::info!(
+            "Shared MTLHeaps unsupported on '{}'; using standalone resource allocation",
+            device.name()
+        );
+        return (
+            HeapAllocator::new(device.clone(), None, 0),
+            TextureHeapAllocator::new(device.clone(), None, 0),
+        );
+    }
+
     tracing::info!("Creating buffer heap allocator...");
     let buffer_heap_desc = HeapDescriptor::new();
     buffer_heap_desc.set_size(heap_size);
@@ -192,7 +213,7 @@ fn create_heaps(device: &MTLDevice, heap_size: u64) -> (HeapAllocator, TextureHe
     // Revisit if Apple exposes a lighter cross-CB barrier primitive.
     buffer_heap_desc.set_hazard_tracking_mode(MTLHazardTrackingMode::Tracked);
     let buffer_heap = device.new_heap(&buffer_heap_desc);
-    let heap_allocator = HeapAllocator::new(device.clone(), buffer_heap, heap_size);
+    let heap_allocator = HeapAllocator::new(device.clone(), Some(buffer_heap), heap_size);
     tracing::info!("Created buffer heap allocator (primary={}MB)", heap_size / 1024 / 1024);
 
     tracing::info!("Creating texture heap...");
@@ -207,7 +228,7 @@ fn create_heaps(device: &MTLDevice, heap_size: u64) -> (HeapAllocator, TextureHe
     // MTLSharedEvent ordering alone did not restore correctness there.
     texture_heap_desc.set_hazard_tracking_mode(MTLHazardTrackingMode::Tracked);
     let texture_heap_raw = device.new_heap(&texture_heap_desc);
-    let texture_heap = TextureHeapAllocator::new(device.clone(), texture_heap_raw, heap_size);
+    let texture_heap = TextureHeapAllocator::new(device.clone(), Some(texture_heap_raw), heap_size);
     tracing::info!("Created texture heap (size={}MB)", heap_size / 1024 / 1024);
 
     (heap_allocator, texture_heap)

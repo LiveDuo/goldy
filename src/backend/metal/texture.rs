@@ -41,6 +41,10 @@ fn allocate_mtl_texture(
 ) -> Result<(mtl::Texture, bool)> {
     {
         let logical_device = state.devices.get(&device_handle).context("Invalid device handle")?;
+        // No heaps (Intel / AMD Macs): standalone texture, residency declared per resource.
+        if !logical_device.texture_heap.lock().unwrap().is_enabled() {
+            return Ok((logical_device.device.new_texture(descriptor), false));
+        }
         // Attempt 1: fast path.
         if let Some(tex) = logical_device.texture_heap.lock().unwrap().allocate(descriptor) {
             return Ok((tex, true));
@@ -148,7 +152,20 @@ pub(super) fn create(
         mtl_usage |= MTLTextureUsage::ShaderRead;
     }
     descriptor.set_usage(mtl_usage);
-    descriptor.set_storage_mode(MTLStorageMode::Shared);
+    // Shared textures are Apple-silicon only; discrete/Intel Macs need Managed.
+    let heaps_enabled = state
+        .devices
+        .get(&device_handle)
+        .context("Invalid device handle")?
+        .texture_heap
+        .lock()
+        .unwrap()
+        .is_enabled();
+    descriptor.set_storage_mode(if heaps_enabled {
+        MTLStorageMode::Shared
+    } else {
+        MTLStorageMode::Managed
+    });
 
     let (texture, is_heap_allocated) = allocate_mtl_texture(state, device_handle, &descriptor)?;
 

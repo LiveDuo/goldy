@@ -2157,7 +2157,14 @@ fn record_render_pass_to_buffer(
     } else {
         command_buffer.new_render_command_encoder(render_pass)
     };
-    super::render_commands::declare_pass_resources(encoder, logical_device, &state.buffers, device_handle, is_mesh)?;
+    super::render_commands::declare_pass_resources(
+        encoder,
+        logical_device,
+        &state.buffers,
+        &state.textures,
+        device_handle,
+        is_mesh,
+    )?;
 
     encoder.set_viewport(mtl::MTLViewport {
         originX: 0.0,

@@ -33,7 +33,8 @@ fn allocate_mtl_storage_buffer(
 
     {
         let logical_device = state.devices.get(&device_handle).context("Invalid device handle")?;
-        if gpu_only || allocation_size > MAX_HEAP_SIZE {
+        let heaps_enabled = logical_device.heap_allocator.lock().unwrap().is_enabled();
+        if gpu_only || allocation_size > MAX_HEAP_SIZE || !heaps_enabled {
             let buf = logical_device.device.new_buffer(allocation_size, options);
             return Ok((buf, true));
         }

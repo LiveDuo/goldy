@@ -116,6 +116,7 @@ pub(super) fn render_to(
         encoder,
         logical_device,
         &state.buffers,
+        &state.textures,
         render_target.device_handle,
         is_mesh,
     )?;

@@ -163,6 +163,11 @@ path = "examples/triangle.rs"
 required-features = ["examples"]
 
 [[example]]
+name = "minimal"
+path = "examples/minimal.rs"
+required-features = ["examples"]
+
+[[example]]
 name = "digital_clock"
 path = "examples/digital_clock.rs"
 required-features = ["examples"]
